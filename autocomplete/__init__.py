@@ -3,9 +3,17 @@
 
 from trac.core import Component, implements
 from trac.ticket.api import ITicketManipulator, ITicketActionController
+from trac.env import Environment
+import logging
+
+myenv = Environment('/srv/trac/desktopqe-backlog-test')
+myenv.log.setLevel(logging.DEBUG)
 
 class FillInTheComplete(Component):
-    implements(ITicketManipulator, ITicketActionController)
+    implements(ITicketManipulator)
+
+    def _get_close_action(self):
+        return ['resolve']
 
     ### ITicketManipulator methods
 
@@ -13,22 +21,14 @@ class FillInTheComplete(Component):
         pass
 
     def validate_ticket(self, req, ticket):
-        self.log.debug("Ticket %r", ticket)
-        if ticket.exists and ticket['complete']:
-            ticket.values['complete'] = '100'
+        myenv.log.debug("Req action %s", req.args)
+        if ticket.exists:
+            if req.args['action'] in self._get_close_action():
+                myenv.log.debug("Setting up complete")
+                ticket.values['complete'] = '100'
+                myenv.log.debug("Complete = %s", ticket.values['complete'])
+        else:
+            ticket.values['complete'] = '0'
 
         return []
 
-    def _get_close_status(self):
-        return ['closed']
-
-    def get_ticket_actions(self, req, ticket):
-        self.log.debug("Ticket %r", ticket)
-        actions_we_handle = []
-        if ticket['status'] in self.get_all_status():
-            actions_we_handle = [(0,'testing')]
-        return actions_we_handle
-
-    def apply_action_side_effects(self, req, ticket, action):
-        self.log.debug("Ticket %r", ticket)
-        pass
